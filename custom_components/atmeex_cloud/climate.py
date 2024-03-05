@@ -1,5 +1,4 @@
 import logging
-from math import fabs
 
 from homeassistant.components.climate import ClimateEntity, HVACMode, ClimateEntityFeature
 from homeassistant.core import HomeAssistant
@@ -40,8 +39,8 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
         self.coordinator = coordinator
         self.device = device
 
-        # self._last_temp = None
         self._last_mode = None
+        self._update_state()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode):
         """Set hvac mode."""
@@ -102,10 +101,13 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
             self._attr_available = False
         else:
             self.device = same_devices[0]
-
-            self._attr_fan_mode = str(self.device.model.settings.u_fan_speed+1)
-            self._attr_target_temperature = self.device.model.settings.u_temp_room
-            self._attr_hvac_mode = HVACMode.OFF if not self.device.model.settings.u_pwr_on else \
-                HVACMode.HEAT if self.device.model.settings.u_temp_room > 0 else HVACMode.FAN_ONLY
+            self._update_state()
 
         self.async_write_ha_state()
+
+    def _update_state(self):
+        self._attr_fan_mode = str(self.device.model.settings.u_fan_speed+1)
+        self._attr_target_temperature = self.device.model.settings.u_temp_room
+        self._attr_hvac_mode = HVACMode.OFF if not self.device.model.settings.u_pwr_on else \
+            HVACMode.HEAT if self.device.model.settings.u_temp_room > 0 else HVACMode.FAN_ONLY
+

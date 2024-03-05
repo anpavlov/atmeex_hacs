@@ -32,7 +32,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         try:
             atmeex = AtmeexClient(user_input.get(CONF_EMAIL), user_input.get(CONF_PASSWORD))
-            devices = atmeex.get_devices()
+            devices = await atmeex.get_devices()
             if len(devices) == 0:
                 errors["base"] = "no devices found in account"
             else:

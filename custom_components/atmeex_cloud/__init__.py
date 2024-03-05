@@ -16,6 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: dict):
     hass.data[DOMAIN] = {}
+    return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     api = AtmeexClient(entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
