@@ -1,0 +1,13 @@
+{
+  "domain": "atmeex_cloud",
+  "name": "Atmeex cloud",
+  "dependencies": [],
+  "documentation": "http://github.com/anpavlov/atmeex_hacs",
+  "requirements": [
+    "atmeexpy==0.1.0"
+  ],
+  "codeowners": ["@anpavlov"],
+  "issue_tracker": "http://github.com/anpavlov/atmeex_hacs/issues",
+  "config_flow": true,
+  "version": "0.1.0"
+}
