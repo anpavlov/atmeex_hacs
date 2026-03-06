@@ -46,17 +46,18 @@ class AtmeexDataCoordinator(DataUpdateCoordinator):
 
         self.hass = hass
         self.api = api
-        self.devices = []
+        self.devices = {}
         self.entry: ConfigEntry = entry
 
     async def _async_update_data(self):
-        self.devices = await self.api.get_devices()
+        device_list = await self.api.get_devices()
+        self.devices = {device.model.id: device for device in device_list}
 
         if self.entry.data[CONF_ACCESS_TOKEN] != self.api.auth._access_token or \
             self.entry.data[CONF_REFRESH_TOKEN] != self.api.auth._refresh_token:
 
-            data = self.entry.data
+            data = dict(self.entry.data)
             data[CONF_ACCESS_TOKEN] = self.api.auth._access_token
             data[CONF_REFRESH_TOKEN] = self.api.auth._refresh_token
 
-            await self.hass.config_entries.async_update_entry(self.entry, data=data)
+            self.hass.config_entries.async_update_entry(self.entry, data=data)

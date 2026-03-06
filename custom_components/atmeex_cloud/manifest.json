@@ -4,7 +4,7 @@
   "dependencies": [],
   "documentation": "http://github.com/anpavlov/atmeex_hacs",
   "requirements": [
-    "atmeexpy==0.1.0"
+    "atmeexpy==0.1.2"
   ],
   "codeowners": ["@anpavlov"],
   "issue_tracker": "http://github.com/anpavlov/atmeex_hacs/issues",
