@@ -26,12 +26,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await coordinator.async_refresh()
 
-    for platform in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(
-                entry, platform
-            )
-        )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     return True
 
 class AtmeexDataCoordinator(DataUpdateCoordinator):
@@ -50,7 +46,10 @@ class AtmeexDataCoordinator(DataUpdateCoordinator):
         self.entry: ConfigEntry = entry
 
     async def _async_update_data(self):
+        # Empty device map before data fetch, so if fetch fail, entities will be marked as unavailable
+        self.devices = {}
         device_list = await self.api.get_devices()
+
         self.devices = {device.model.id: device for device in device_list}
 
         if self.entry.data[CONF_ACCESS_TOKEN] != self.api.auth._access_token or \
