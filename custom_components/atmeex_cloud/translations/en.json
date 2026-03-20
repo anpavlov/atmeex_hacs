@@ -1,0 +1,28 @@
+{
+    "entity": {
+        "climate": {
+            "atmeex_cloud": {
+                "state_attributes": {
+                    "fan_mode": {
+                        "state": {
+                            "speed_1": "Speed 1",
+                            "speed_2": "Speed 2",
+                            "speed_3": "Speed 3",
+                            "speed_4": "Speed 4",
+                            "speed_5": "Speed 5",
+                            "speed_6": "Speed 6",
+                            "speed_7": "Speed 7"
+                        }
+                    },
+                    "preset_mode": {
+                        "state": {
+                            "supply": "Supply",
+                            "mixed": "Mixed",
+                            "recirculation": "Recirculation"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

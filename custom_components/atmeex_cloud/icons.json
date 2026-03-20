@@ -5,13 +5,13 @@
                 "state_attributes": {
                     "fan_mode": {
                         "state": {
-                            "Скорость 1": "mdi:numeric-1",
-                            "Скорость 2": "mdi:numeric-2",
-                            "Скорость 3": "mdi:numeric-3",
-                            "Скорость 4": "mdi:numeric-4",
-                            "Скорость 5": "mdi:numeric-5",
-                            "Скорость 6": "mdi:numeric-6",
-                            "Скорость 7": "mdi:numeric-7"
+                            "speed_1": "mdi:numeric-1",
+                            "speed_2": "mdi:numeric-2",
+                            "speed_3": "mdi:numeric-3",
+                            "speed_4": "mdi:numeric-4",
+                            "speed_5": "mdi:numeric-5",
+                            "speed_6": "mdi:numeric-6",
+                            "speed_7": "mdi:numeric-7"
                         }
                     }
                 }

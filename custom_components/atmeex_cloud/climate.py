@@ -5,14 +5,31 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PRECISION_HALVES, UnitOfTemperature, ATTR_TEMPERATURE
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from atmeexpy.device import Device
 
 from . import AtmeexDataCoordinator
 
-from .const import DOMAIN
+from .const import DOMAIN, SPEEDS
 
 _LOGGER = logging.getLogger(__name__)
+
+# Preset modes for damper position
+PRESET_SUPPLY = "supply"        # damp_pos=0, open damper
+PRESET_MIXED = "mixed"          # damp_pos=1, mixed mode
+PRESET_RECIRCULATION = "recirculation"  # damp_pos=2, closed damper
+
+PRESET_MODES = [PRESET_SUPPLY, PRESET_MIXED, PRESET_RECIRCULATION]
+
+DAMPER_TO_PRESET = {
+    0: PRESET_SUPPLY,
+    1: PRESET_MIXED,
+    2: PRESET_RECIRCULATION,
+}
+
+PRESET_TO_DAMPER = {v: k for k, v in DAMPER_TO_PRESET.items()}
+
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
     coordinator: AtmeexDataCoordinator = hass.data[DOMAIN][config_entry.entry_id]
@@ -24,14 +41,23 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.FAN_ONLY, HVACMode.OFF]
     _attr_min_temp = 10
     _attr_max_temp = 30
-    _attr_fan_modes = ["Скорость 1", "Скорость 2", "Скорость 3", "Скорость 4", "Скорость 5", "Скорость 6", "Скорость 7"]
+    _attr_fan_modes = SPEEDS
+    _attr_preset_modes = PRESET_MODES
     _attr_precision = PRECISION_HALVES
     _attr_target_temperature_step = 0.5
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-    _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE |
+        ClimateEntityFeature.FAN_MODE |
+        ClimateEntityFeature.PRESET_MODE |
+        ClimateEntityFeature.TURN_ON |
+        ClimateEntityFeature.TURN_OFF
+    )
     _attr_icon = 'mdi:air-purifier'
     _attr_translation_key = DOMAIN
     _attr_fan_mode: int
+    _attr_has_entity_name = True
+    _attr_name = None
 
 
     def __init__(self, device: Device, coordinator: AtmeexDataCoordinator):
@@ -47,6 +73,16 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
         self._last_temp = None
         self._update_state()
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, str(self.device.model.id))},
+            name=self.device.model.name,
+            manufacturer="Atmeex",
+            model=self.device.model.model,
+            sw_version=self.device.model.fw_ver,
+        )
+
     async def async_set_hvac_mode(self, hvac_mode: HVACMode):
         """Set hvac mode."""
         _LOGGER.info("Need to set mode to %s, current mode is %s", hvac_mode, self.hvac_mode)
@@ -57,7 +93,7 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
             pass
         elif hvac_mode == HVACMode.OFF:
             self._last_mode = self.hvac_mode
-            await self.device.set_power(False)
+            await self.device.set_power_and_damp(False, 2)
         elif hvac_mode == HVACMode.HEAT:
             saved_target_temp = self.target_temperature
             if saved_target_temp is None:
@@ -69,12 +105,17 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
                     saved_target_temp = 10
 
             if self.hvac_mode == HVACMode.OFF:
-                await self.device.set_power(True)
+                # Turn on with open damper for heating
+                await self.device.set_power_and_damp(True, 0)
+            elif self.device.model.settings.u_damp_pos != 0:
+                # Open damper for heating if it was closed/mixed
+                await self.device.set_damp_pos(0)
 
             await self.device.set_heat_temp(saved_target_temp*10)
         elif hvac_mode == HVACMode.FAN_ONLY:
             if self.hvac_mode == HVACMode.OFF:
-                await self.device.set_power(True)
+                # Breezer anyway opens damp when turning on power
+                await self.device.set_power_and_damp(True, 0)
 
             await self.device.set_heat_temp(-1000)
         else:
@@ -84,8 +125,18 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
         self._sync_update()
 
     async def async_set_fan_mode(self, fan_mode: str):
-        await self.device.set_fan_speed(int(fan_mode.split(" ")[1])-1)
+        await self.device.set_fan_speed(int(fan_mode.split("_")[1])-1)
 
+        self._sync_update()
+
+    async def async_set_preset_mode(self, preset_mode: str):
+        """Set preset mode (damper position)."""
+        damp_pos = PRESET_TO_DAMPER.get(preset_mode)
+        if damp_pos is None:
+            _LOGGER.error("Unknown preset mode: %s", preset_mode)
+            return
+
+        await self.device.set_damp_pos(damp_pos)
         self._sync_update()
 
     async def async_set_temperature(self, **kwargs):
@@ -95,6 +146,16 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
         await self.device.set_heat_temp(temperature*10)
 
         self._sync_update()
+
+    @property
+    def available(self) -> bool:
+        if self.device is None:
+            return False
+
+        if self.device.model.condition is not None:
+            return True
+
+        return self.device.model.online
 
     async def async_turn_on(self):
         if self.hvac_mode != HVACMode.OFF:
@@ -112,33 +173,53 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
     def _handle_coordinator_update(self) -> None:
         updated_device = self.coordinator.devices.get(self.device_id, None)
 
-        if updated_device is None:
-            self._attr_available = False
-            return
-
-        if self.device.model.settings == updated_device.model.settings:
-            return
+        _LOGGER.warning(f"Device update {updated_device.__dict__}")
 
         self.device = updated_device
+
         self._update_state()
+
+        _LOGGER.warning(f"Write state")
 
         self.async_write_ha_state()
 
     def _update_state(self):
-        self._attr_fan_mode = "Скорость " + str(self.device.model.settings.u_fan_speed+1)
+        if self.device is None:
+            return
+
+        self._attr_fan_mode = "speed_" + str(self.device.model.settings.u_fan_speed+1)
         if self.device.model.settings.u_temp_room != -1000:
             self._attr_target_temperature = self.device.model.settings.u_temp_room/10
         else:
             if self.target_temperature is not None:
                 self._last_temp = self.target_temperature
             self._attr_target_temperature = None
-        self._attr_hvac_mode = HVACMode.OFF if not self.device.model.settings.u_pwr_on else \
-            HVACMode.HEAT if self.device.model.settings.u_temp_room > 0 else HVACMode.FAN_ONLY
+
+        # Determine HVAC mode based on power, damper position, and heating
+        # damp_pos: 0=open, 1=mixed, 2=closed
+        damp_pos = self.device.model.settings.u_damp_pos
+        pwr_on = self.device.model.settings.u_pwr_on
+        temp_room = self.device.model.settings.u_temp_room
+
+        # Set preset mode based on damper position
+        self._attr_preset_mode = DAMPER_TO_PRESET.get(damp_pos)
+
+        if not pwr_on:
+            self._attr_hvac_mode = HVACMode.OFF
+        elif damp_pos == 2:
+            # Closed damper = recirculation mode (indoor air ventilation)
+            self._attr_hvac_mode = HVACMode.FAN_ONLY
+        elif temp_room > 0:
+            self._attr_hvac_mode = HVACMode.HEAT
+        else:
+            self._attr_hvac_mode = HVACMode.FAN_ONLY
 
 
+    # _sync_update updates entity based on changes mande to device model after API request
     def _sync_update(self):
         self._update_state()
         self.async_write_ha_state()
+        _LOGGER.warning(f"Write state from sync update")
 
-        self.coordinator.devices[self.device_id].model.settings = self.device.model.settings
+        self.coordinator.devices[self.device_id].model = self.device.model
         self.coordinator.async_update_listeners()

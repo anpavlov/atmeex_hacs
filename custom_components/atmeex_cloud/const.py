@@ -5,3 +5,13 @@ PLATFORMS = [
     "climate",
     "fan",
 ]
+
+SPEEDS = [
+    "speed_1",
+    "speed_2",
+    "speed_3",
+    "speed_4",
+    "speed_5",
+    "speed_6",
+    "speed_7"
+]
