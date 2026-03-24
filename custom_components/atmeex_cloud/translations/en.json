@@ -1,4 +1,25 @@
 {
+    "config": {
+        "step": {
+            "user": {
+                "title": "Atmeex Cloud",
+                "description": "Enter your Atmeex account credentials to connect your ventilation device.",
+                "data": {
+                    "email": "Email",
+                    "password": "Password"
+                },
+                "data_description": {
+                    "email": "The email address used for your Atmeex account",
+                    "password": "Your account password"
+                }
+            }
+        },
+        "error": {
+            "no_devices": "No devices found in your account",
+            "auth": "Authentication failed. Please check your credentials.",
+            "unknown": "Unexpected error occurred"
+        }
+    },
     "entity": {
         "climate": {
             "atmeex_cloud": {
@@ -22,6 +43,26 @@
                         }
                     }
                 }
+            }
+        },
+        "fan": {
+            "fan": {
+                "name": "Fan"
+            }
+        },
+        "select": {
+            "damper_position": {
+                "name": "Damper",
+                "state": {
+                    "open": "Open",
+                    "mixed": "Mixed",
+                    "closed": "Closed"
+                }
+            }
+        },
+        "switch": {
+            "power": {
+                "name": "Power"
             }
         }
     }

@@ -4,13 +4,11 @@ from homeassistant.components.climate import ClimateEntity, HVACMode, ClimateEnt
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PRECISION_HALVES, UnitOfTemperature, ATTR_TEMPERATURE
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.device_registry import DeviceInfo
 
 from atmeexpy.device import Device
 
-from . import AtmeexDataCoordinator
-
+from .coordinator import AtmeexDataCoordinator
+from .entity import AtmeexBaseEntity
 from .const import DOMAIN, SPEEDS
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +34,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     async_add_entities([AtmeexClimateEntity(device, coordinator) for device in coordinator.devices.values()])
 
-class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
+
+class AtmeexClimateEntity(AtmeexBaseEntity, ClimateEntity):
 
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.FAN_ONLY, HVACMode.OFF]
     _attr_min_temp = 10
@@ -56,32 +55,16 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
     _attr_icon = 'mdi:air-purifier'
     _attr_translation_key = DOMAIN
     _attr_fan_mode: int
-    _attr_has_entity_name = True
     _attr_name = None
 
 
     def __init__(self, device: Device, coordinator: AtmeexDataCoordinator):
-        CoordinatorEntity.__init__(self, coordinator=coordinator)
-
-        self.coordinator = coordinator
-        self.device = device
-        self.device_id = device.model.id
+        super().__init__(device, coordinator)
 
         self._attr_unique_id = str(device.model.id)
 
         self._last_mode = None
         self._last_temp = None
-        self._update_state()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, str(self.device.model.id))},
-            name=self.device.model.name,
-            manufacturer="Atmeex",
-            model=self.device.model.model,
-            sw_version=self.device.model.fw_ver,
-        )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode):
         """Set hvac mode."""
@@ -147,16 +130,6 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
 
         self._sync_update()
 
-    @property
-    def available(self) -> bool:
-        if self.device is None:
-            return False
-
-        if self.device.model.condition is not None:
-            return True
-
-        return self.device.model.online
-
     async def async_turn_on(self):
         if self.hvac_mode != HVACMode.OFF:
             # do nothing if we already working
@@ -169,19 +142,6 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
     async def async_turn_off(self):
         _LOGGER.debug(f"Turning off from {self.hvac_mode}")
         await self.async_set_hvac_mode(HVACMode.OFF)
-
-    def _handle_coordinator_update(self) -> None:
-        updated_device = self.coordinator.devices.get(self.device_id, None)
-
-        _LOGGER.warning(f"Device update {updated_device.__dict__}")
-
-        self.device = updated_device
-
-        self._update_state()
-
-        _LOGGER.warning(f"Write state")
-
-        self.async_write_ha_state()
 
     def _update_state(self):
         if self.device is None:
@@ -213,13 +173,3 @@ class AtmeexClimateEntity(CoordinatorEntity, ClimateEntity):
             self._attr_hvac_mode = HVACMode.HEAT
         else:
             self._attr_hvac_mode = HVACMode.FAN_ONLY
-
-
-    # _sync_update updates entity based on changes mande to device model after API request
-    def _sync_update(self):
-        self._update_state()
-        self.async_write_ha_state()
-        _LOGGER.warning(f"Write state from sync update")
-
-        self.coordinator.devices[self.device_id].model = self.device.model
-        self.coordinator.async_update_listeners()

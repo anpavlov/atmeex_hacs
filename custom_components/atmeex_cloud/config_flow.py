@@ -16,6 +16,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     },
 )
 
+
 class ConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for atmeex cloud."""
 
@@ -34,7 +35,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             atmeex = AtmeexClient(user_input.get(CONF_EMAIL), user_input.get(CONF_PASSWORD))
             devices = await atmeex.get_devices()
             if len(devices) == 0:
-                errors["base"] = "no devices found in account"
+                errors["base"] = "no_devices"
             else:
                 user_input[CONF_ACCESS_TOKEN] = atmeex.auth._access_token
                 user_input[CONF_REFRESH_TOKEN] = atmeex.auth._refresh_token
@@ -44,7 +45,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
         except Exception as exc:
             _LOGGER.exception("Unexpected exception")
-            errors["base"] = str(exc)
+            errors["base"] = "auth"
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
