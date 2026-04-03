@@ -3,7 +3,17 @@
         "step": {
             "user": {
                 "title": "Atmeex Cloud",
-                "description": "Enter your Atmeex account credentials to connect your ventilation device.",
+                "description": "Select authentication method for your Atmeex account.",
+                "data": {
+                    "auth_method": "Authentication method"
+                },
+                "data_description": {
+                    "auth_method": "Choose how you want to sign in"
+                }
+            },
+            "email": {
+                "title": "Email Authentication",
+                "description": "Enter your Atmeex account credentials.",
                 "data": {
                     "email": "Email",
                     "password": "Password"
@@ -12,11 +22,33 @@
                     "email": "The email address used for your Atmeex account",
                     "password": "Your account password"
                 }
+            },
+            "phone": {
+                "title": "Phone Authentication",
+                "description": "Enter your phone number to receive SMS code.",
+                "data": {
+                    "phone": "Phone number"
+                },
+                "data_description": {
+                    "phone": "Phone number in international format (e.g., +79991234567)"
+                }
+            },
+            "phone_code": {
+                "title": "Enter SMS Code",
+                "description": "Enter the verification code sent to your phone.",
+                "data": {
+                    "phone_code": "SMS Code"
+                },
+                "data_description": {
+                    "phone_code": "6-digit code from SMS"
+                }
             }
         },
         "error": {
             "no_devices": "No devices found in your account",
             "auth": "Authentication failed. Please check your credentials.",
+            "sms_send_failed": "Failed to send SMS code. Please check your phone number.",
+            "invalid_code": "Invalid SMS code. Please try again.",
             "unknown": "Unexpected error occurred"
         }
     },
