@@ -5,6 +5,7 @@ from atmeexpy.client import AtmeexClient
 
 from homeassistant.config_entries import ConfigFlow
 from homeassistant.const import CONF_PASSWORD, CONF_EMAIL
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 from .const import DOMAIN, CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,11 +20,20 @@ AUTH_METHOD_PHONE = "phone"
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_AUTH_METHOD, default=AUTH_METHOD_EMAIL): vol.In(
-            [AUTH_METHOD_EMAIL, AUTH_METHOD_PHONE]
+        vol.Required(CONF_AUTH_METHOD, default=AUTH_METHOD_EMAIL): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    {"value": AUTH_METHOD_EMAIL, "label": "email"},
+                    {"value": AUTH_METHOD_PHONE, "label": "phone"},
+                ],
+                mode=SelectSelectorMode.LIST,
+                translation_key="auth_method",
+            )
         ),
-    },
+    }
 )
+
+
 
 STEP_EMAIL_DATA_SCHEMA = vol.Schema(
     {

@@ -52,6 +52,14 @@
             "unknown": "Произошла непредвиденная ошибка"
         }
     },
+    "selector": {
+        "auth_method": {
+            "options": {
+                "email": "По почте и паролю",
+                "phone": "По телефону"
+            }
+        }
+    },
     "entity": {
         "climate": {
             "atmeex_cloud": {

@@ -52,6 +52,14 @@
             "unknown": "Unexpected error occurred"
         }
     },
+    "selector": {
+        "auth_method": {
+            "options": {
+                "email": "By email and password",
+                "phone": "By phone number"
+            }
+        }
+    },
     "entity": {
         "climate": {
             "atmeex_cloud": {
