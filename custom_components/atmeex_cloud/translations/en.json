@@ -42,6 +42,10 @@
                 "data_description": {
                     "phone_code": "6-digit code from SMS"
                 }
+            },
+            "reauth_confirm": {
+                "title": "Authentication Expired",
+                "description": "Your authentication has expired. Click Submit to re-authenticate with {account}."
             }
         },
         "error": {
@@ -50,13 +54,18 @@
             "sms_send_failed": "Failed to send SMS code. Please check your phone number.",
             "invalid_code": "Invalid SMS code. Please try again.",
             "unknown": "Unexpected error occurred"
+        },
+        "abort": {
+            "already_configured": "Account is already configured",
+            "unique_id_mismatch": "Account does not match the one being reauthenticated. Please delete entry and setup again",
+            "reauth_successful": "Re-authentication was successful"
         }
     },
     "selector": {
         "auth_method": {
             "options": {
-                "email": "By email and password",
-                "phone": "By phone number"
+                "auth_method_email": "Using email and password",
+                "auth_method_phone": "Using phone number"
             }
         }
     },

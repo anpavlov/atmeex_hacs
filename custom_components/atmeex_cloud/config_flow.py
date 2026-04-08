@@ -1,10 +1,14 @@
 import logging
+from typing import Any
 
 import voluptuous as vol
+import httpx
 from atmeexpy.client import AtmeexClient
+from atmeexpy.exceptions import AtmeexAuthError
 
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigFlow, ConfigEntry, SOURCE_REAUTH
 from homeassistant.const import CONF_PASSWORD, CONF_EMAIL
+from homeassistant.helpers.httpx_client import create_async_httpx_client
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 from .const import DOMAIN, CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN
 
@@ -14,8 +18,8 @@ CONF_PHONE = "phone"
 CONF_PHONE_CODE = "phone_code"
 CONF_AUTH_METHOD = "auth_method"
 
-AUTH_METHOD_EMAIL = "email"
-AUTH_METHOD_PHONE = "phone"
+AUTH_METHOD_EMAIL = "auth_method_email"
+AUTH_METHOD_PHONE = "auth_method_phone"
 
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
@@ -23,8 +27,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_AUTH_METHOD, default=AUTH_METHOD_EMAIL): SelectSelector(
             SelectSelectorConfig(
                 options=[
-                    {"value": AUTH_METHOD_EMAIL, "label": "email"},
-                    {"value": AUTH_METHOD_PHONE, "label": "phone"},
+                    AUTH_METHOD_EMAIL,
+                    AUTH_METHOD_PHONE,
                 ],
                 mode=SelectSelectorMode.LIST,
                 translation_key="auth_method",
@@ -55,7 +59,7 @@ STEP_PHONE_CODE_DATA_SCHEMA = vol.Schema(
 )
 
 
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
+class AtmeexConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for atmeex cloud."""
 
     VERSION = 1
@@ -82,8 +86,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            http_client = create_async_httpx_client(self.hass)
+            client = AtmeexClient(http_client)
             try:
-                client = AtmeexClient()
                 await client.signin_with_email(
                     user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
                 )
@@ -94,14 +99,22 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 else:
                     data = {
                         CONF_EMAIL: user_input[CONF_EMAIL],
-                        CONF_ACCESS_TOKEN: client.auth._access_token,
-                        CONF_REFRESH_TOKEN: client.auth._refresh_token,
+                        CONF_ACCESS_TOKEN: client.access_token,
+                        CONF_REFRESH_TOKEN: client.refresh_token,
                     }
+                    await self.async_set_unique_id(user_input[CONF_EMAIL])
+                    if self.source == SOURCE_REAUTH:
+                        self._abort_if_unique_id_mismatch()
+                        return self.async_update_reload_and_abort(
+                            self._get_reauth_entry(),
+                            data_updates=data,
+                        )
+                    self._abort_if_unique_id_configured()
                     return self.async_create_entry(
                         title=user_input[CONF_EMAIL],
                         data=data,
                     )
-            except Exception as exc:
+            except (AtmeexAuthError, httpx.HTTPStatusError) as exc:
                 _LOGGER.exception("Email authentication failed")
                 errors["base"] = "auth"
 
@@ -116,10 +129,11 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 self._phone = user_input[CONF_PHONE]
-                self._client = AtmeexClient()
+                http_client = create_async_httpx_client(self.hass)
+                self._client = AtmeexClient(http_client)
                 await self._client.request_sms_code(self._phone)
                 return await self.async_step_phone_code()
-            except Exception as exc:
+            except (AtmeexAuthError, httpx.HTTPStatusError) as exc:
                 _LOGGER.exception("Failed to send SMS code")
                 errors["base"] = "sms_send_failed"
 
@@ -143,14 +157,22 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 else:
                     data = {
                         CONF_PHONE: self._phone,
-                        CONF_ACCESS_TOKEN: self._client.auth._access_token,
-                        CONF_REFRESH_TOKEN: self._client.auth._refresh_token,
+                        CONF_ACCESS_TOKEN: self._client.access_token,
+                        CONF_REFRESH_TOKEN: self._client.refresh_token,
                     }
+                    await self.async_set_unique_id(self._phone)
+                    if self.source == SOURCE_REAUTH:
+                        self._abort_if_unique_id_mismatch()
+                        return self.async_update_reload_and_abort(
+                            self._get_reauth_entry(),
+                            data_updates=data,
+                        )
+                    self._abort_if_unique_id_configured()
                     return self.async_create_entry(
                         title=self._phone,
                         data=data,
                     )
-            except Exception as exc:
+            except (AtmeexAuthError, httpx.HTTPStatusError) as exc:
                 _LOGGER.exception("Phone authentication failed")
                 errors["base"] = "invalid_code"
 
@@ -158,4 +180,30 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="phone_code",
             data_schema=STEP_PHONE_CODE_DATA_SCHEMA,
             errors=errors
+        )
+
+    async def async_step_reauth(self, entry_data: dict[str, Any]):
+        """Handle re-authentication."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        """Handle re-auth confirmation - redirect to appropriate auth method."""
+        if user_input is not None:
+            entry = self._get_reauth_entry()
+            if CONF_EMAIL in entry.data:
+                return await self.async_step_email()
+            else:
+                return await self.async_step_phone()
+
+        entry = self._get_reauth_entry()
+        if CONF_EMAIL in entry.data:
+            account = entry.data[CONF_EMAIL]
+        elif CONF_PHONE in entry.data:
+            account = entry.data[CONF_PHONE]
+        else:
+            account = ""
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            description_placeholders={"account": account},
         )

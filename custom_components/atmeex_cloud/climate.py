@@ -76,7 +76,7 @@ class AtmeexClimateEntity(AtmeexBaseEntity, ClimateEntity):
             pass
         elif hvac_mode == HVACMode.OFF:
             self._last_mode = self.hvac_mode
-            await self.device.set_power_and_damp(False, 2)
+            await self._async_call_with_auth_check(self.device.set_power_and_damp(False, 2))
         elif hvac_mode == HVACMode.HEAT:
             saved_target_temp = self.target_temperature
             if saved_target_temp is None:
@@ -89,18 +89,18 @@ class AtmeexClimateEntity(AtmeexBaseEntity, ClimateEntity):
 
             if self.hvac_mode == HVACMode.OFF:
                 # Turn on with open damper for heating
-                await self.device.set_power_and_damp(True, 0)
+                await self._async_call_with_auth_check(self.device.set_power_and_damp(True, 0))
             elif self.device.model.settings.u_damp_pos != 0:
                 # Open damper for heating if it was closed/mixed
-                await self.device.set_damp_pos(0)
+                await self._async_call_with_auth_check(self.device.set_damp_pos(0))
 
-            await self.device.set_heat_temp(saved_target_temp*10)
+            await self._async_call_with_auth_check(self.device.set_heat_temp(saved_target_temp*10))
         elif hvac_mode == HVACMode.FAN_ONLY:
             if self.hvac_mode == HVACMode.OFF:
                 # Breezer anyway opens damp when turning on power
-                await self.device.set_power_and_damp(True, 0)
+                await self._async_call_with_auth_check(self.device.set_power_and_damp(True, 0))
 
-            await self.device.set_heat_temp(-1000)
+            await self._async_call_with_auth_check(self.device.set_heat_temp(-1000))
         else:
             _LOGGER.error("Unrecognized hvac mode: %s", hvac_mode)
             return
@@ -108,7 +108,9 @@ class AtmeexClimateEntity(AtmeexBaseEntity, ClimateEntity):
         self._sync_update()
 
     async def async_set_fan_mode(self, fan_mode: str):
-        await self.device.set_fan_speed(int(fan_mode.split("_")[1])-1)
+        await self._async_call_with_auth_check(
+            self.device.set_fan_speed(int(fan_mode.split("_")[1])-1)
+        )
 
         self._sync_update()
 
@@ -119,14 +121,14 @@ class AtmeexClimateEntity(AtmeexBaseEntity, ClimateEntity):
             _LOGGER.error("Unknown preset mode: %s", preset_mode)
             return
 
-        await self.device.set_damp_pos(damp_pos)
+        await self._async_call_with_auth_check(self.device.set_damp_pos(damp_pos))
         self._sync_update()
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        await self.device.set_heat_temp(temperature*10)
+        await self._async_call_with_auth_check(self.device.set_heat_temp(temperature*10))
 
         self._sync_update()
 

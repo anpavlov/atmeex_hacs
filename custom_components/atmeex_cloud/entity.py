@@ -1,17 +1,23 @@
 """Base entity class for Atmeex entities."""
 
+import httpx
 import logging
 from abc import abstractmethod
+from typing import Awaitable, TypeVar
 
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from atmeexpy.device import Device
+from atmeexpy.exceptions import AtmeexAuthError
 
 from .coordinator import AtmeexDataCoordinator
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class AtmeexBaseEntity(CoordinatorEntity):
@@ -71,3 +77,16 @@ class AtmeexBaseEntity(CoordinatorEntity):
     def _sync_update(self):
         """Sync entity state to coordinator after local changes."""
         self.coordinator.async_update_listeners()
+
+    async def _async_call_with_auth_check(self, coro: Awaitable[T]) -> T:
+        """Execute API call with auth error handling."""
+        try:
+            return await coro
+        except AtmeexAuthError as err:
+            # Start reauth flow
+            self.coordinator.entry.async_start_reauth(self.hass)
+            raise HomeAssistantError(
+                "Authentication expired. Please reconfigure the integration."
+            ) from err
+        except httpx.HTTPStatusError as err:
+            raise HomeAssistantError(f"Communication error: {err}") from err
