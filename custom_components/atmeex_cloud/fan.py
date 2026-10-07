@@ -64,21 +64,17 @@ class AtmeexFanEntity(AtmeexBaseEntity, FanEntity):
         speed_index = SPEEDS.index(speed_name)
 
         # Turn on if off
-        if not self.is_on:
-            await self._async_call_with_auth_check(self.device.set_power_only(True))
-
-        await self._async_call_with_auth_check(self.device.set_fan_speed(speed_index))
+        await self._async_set_fan_speed(speed_index, power_on=not self.is_on)
         self._sync_update()
 
     async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs):
         """Turn on the fan."""
-        if not self.is_on:
-            await self._async_call_with_auth_check(self.device.set_power_only(True))
-
         if percentage is not None:
             speed_name = percentage_to_ordered_list_item(SPEEDS, percentage)
             speed_index = SPEEDS.index(speed_name)
-            await self._async_call_with_auth_check(self.device.set_fan_speed(speed_index))
+            await self._async_set_fan_speed(speed_index, power_on=not self.is_on)
+        elif not self.is_on:
+            await self._async_call_with_auth_check(self.device.set_power_only(True))
 
         self._sync_update()
 

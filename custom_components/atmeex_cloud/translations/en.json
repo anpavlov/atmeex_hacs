@@ -70,6 +70,11 @@
         }
     },
     "entity": {
+        "binary_sensor": {
+            "no_water": {
+                "name": "No water"
+            }
+        },
         "climate": {
             "atmeex_cloud": {
                 "state_attributes": {
@@ -99,6 +104,11 @@
                 "name": "Fan"
             }
         },
+        "number": {
+            "fan_speed": {
+                "name": "Fan speed"
+            }
+        },
         "select": {
             "damper_position": {
                 "name": "Damper",
@@ -107,11 +117,40 @@
                     "mixed": "Mixed",
                     "closed": "Closed"
                 }
+            },
+            "humidifier": {
+                "name": "Humidifier",
+                "state": {
+                    "off": "Off",
+                    "stage_1": "Stage 1",
+                    "stage_2": "Stage 2",
+                    "stage_3": "Stage 3"
+                }
+            }
+        },
+        "sensor": {
+            "temp_room": {
+                "name": "Room temperature"
+            },
+            "temp_in": {
+                "name": "Intake air temperature"
+            },
+            "hum_room": {
+                "name": "Room humidity"
+            },
+            "co2_ppm": {
+                "name": "CO₂"
             }
         },
         "switch": {
             "power": {
                 "name": "Power"
+            },
+            "auto_mode": {
+                "name": "Auto mode"
+            },
+            "night_mode": {
+                "name": "Night mode"
             }
         }
     }

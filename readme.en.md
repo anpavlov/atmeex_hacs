@@ -7,10 +7,13 @@ A Home Assistant integration to control Airnanny A7 breathers through the Atmeex
 ## Features
 
 - Control operation modes: off, heating, ventilation
-- 7 fan speeds
+- 7 fan speeds: as a percentage (Fan) or as a number from 1 to 7 (Number)
 - 3 damper positions: supply, mixed mode, recirculation
 - Heating temperature control (10-30°C, 0.5°C step)
 - Passive ventilation (damper open, fan off)
+- Current readings: room temperature and humidity, CO₂, intake air temperature
+- Humidifier: off or stage 1–3, "No water" sensor (on models with a humidifier)
+- Auto mode and night mode
 - Authorization via email + password, or via phone number with SMS one-time code
 
 ## Supported Devices
@@ -31,12 +34,15 @@ A Home Assistant integration to control Airnanny A7 breathers through the Atmeex
 
 ## Platforms
 
-The integration creates four types of entities for each device:
+The integration creates entities of these types for each device (some only on models with a humidifier):
 
 - **Climate** — full breather control: power, temperature, fan speed, damper mode
-- **Switch** — power switch with automatic damper control
+- **Switch** — power switch with automatic damper control, auto mode and night mode
 - **Fan** — fan speed and power control WITHOUT damper control
-- **Select** — damper position selection (open/mixed/closed)
+- **Number** — fan speed as a number from 1 to 7
+- **Select** — damper position (open/mixed/closed) and humidifier stage selection
+- **Sensor** — current breather sensor readings
+- **Binary sensor** — humidifier is out of water
 
 ### Climate
 
@@ -72,6 +78,12 @@ Power switch with automatic damper control.
 
 Perfect for simple on/off control with fresh air supply in automations.
 
+### Switch (Auto mode, Night mode)
+
+Turn the breather's auto mode and night mode on and off, like the buttons with the same names in the Atmeex app. The modes exclude each other: turning one on turns the other off.
+
+In auto mode the breather picks the fan speed itself, so a manual speed change (Number, Fan, fan mode in Climate) turns auto mode off.
+
 ### Fan
 
 Entity for fan control without damper management.
@@ -82,6 +94,10 @@ Entity for fan control without damper management.
 
 Use Fan when you want to control only the fan while keeping the current damper position.
 
+### Number (Fan speed)
+
+Fan speed as a number from 1 to 7, the same as the fan mode in Climate. It changes the speed only: a breather that is off stays off, auto mode turns off. The Fan entity with its percentage speed keeps working as before.
+
 ### Select (Damper)
 
 Entity for independent damper position control.
@@ -89,6 +105,25 @@ Entity for independent damper position control.
 - **Supply** — damper open
 - **Mixed** — mixed mode
 - **Recirculation** — damper closed
+
+### Select (Humidifier)
+
+Humidification stage: off, stage 1, 2 or 3. Created only for models with a humidifier — only they report room humidity.
+
+### Sensor
+
+Breather sensor readings, updated every 30 seconds:
+
+- **Room temperature**, °C (also shown as current temperature in Climate)
+- **Room humidity**, % (also shown as current humidity in Climate)
+- **CO₂**, ppm
+- **Intake air temperature**, °C
+
+A sensor is created only if the breather reports that reading: room humidity exists only on models with a humidifier, CO₂ only on models with a CO₂ sensor (models without one report zero).
+
+### Binary sensor (No water)
+
+Turns on when the humidifier runs out of water. Created only for models with a humidifier.
 
 ## Operation Features
 

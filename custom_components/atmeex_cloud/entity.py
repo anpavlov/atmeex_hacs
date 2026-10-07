@@ -3,9 +3,12 @@
 import httpx
 import logging
 from abc import abstractmethod
-from typing import Awaitable, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 
@@ -18,6 +21,38 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+@callback
+def async_add_entities_when_reported(
+    coordinator: AtmeexDataCoordinator,
+    config_entry: ConfigEntry,
+    async_add_entities,
+    factories: dict[str, Callable[[Device], Entity]],
+):
+    """Add entities once their device reports the reading they need.
+
+    factories maps a reading key to a function that creates the entity for a device.
+    Readings may be missing on the first fetch (device offline), so check on every update.
+    """
+    added: set[tuple[int, str]] = set()
+
+    @callback
+    def add_new_entities():
+        new_entities = []
+        for device_id, device in coordinator.devices.items():
+            for key, factory in factories.items():
+                if (device_id, key) in added or coordinator.get_reading(device_id, key) is None:
+                    continue
+
+                added.add((device_id, key))
+                new_entities.append(factory(device))
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    add_new_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(add_new_entities))
 
 
 class AtmeexBaseEntity(CoordinatorEntity):
@@ -49,7 +84,8 @@ class AtmeexBaseEntity(CoordinatorEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if self.device is None:
+        # A failed poll or a device removed from the account
+        if not super().available or self.device_id not in self.coordinator.devices:
             return False
 
         if self.device.model.condition is not None:
@@ -61,12 +97,10 @@ class AtmeexBaseEntity(CoordinatorEntity):
         """Handle updated data from the coordinator."""
         updated_device = self.coordinator.devices.get(self.device_id, None)
 
-        if updated_device is None:
-            self._attr_available = False
-            return
+        if updated_device is not None:
+            self.device = updated_device
+            self._update_state()
 
-        self.device = updated_device
-        self._update_state()
         self.async_write_ha_state()
 
     @abstractmethod
@@ -78,6 +112,23 @@ class AtmeexBaseEntity(CoordinatorEntity):
         """Sync entity state to coordinator after local changes."""
         self.coordinator.async_update_listeners()
 
+    async def _async_set_params(self, **params: Any) -> None:
+        """Set device params that atmeexpy has no setters for."""
+        resp = await self.coordinator.api.http_client.put(f"/devices/{self.device_id}/params", json=params)
+        resp.raise_for_status()
+
+        # Show the new values right away, the next poll brings the values stored in the cloud
+        for key, value in params.items():
+            setattr(self.device.model.settings, key, value)
+
+    async def _async_set_fan_speed(self, speed_index: int, power_on: bool = False) -> None:
+        """Set fan speed (0-6) in one request; auto mode would override it, so turn auto mode off too."""
+        params = {"u_fan_speed": speed_index, "u_auto": False}
+        if power_on:
+            params["u_pwr_on"] = True
+
+        await self._async_call_with_auth_check(self._async_set_params(**params))
+
     async def _async_call_with_auth_check(self, coro: Awaitable[T]) -> T:
         """Execute API call with auth error handling."""
         try:
@@ -88,5 +139,6 @@ class AtmeexBaseEntity(CoordinatorEntity):
             raise HomeAssistantError(
                 "Authentication expired. Please reconfigure the integration."
             ) from err
-        except httpx.HTTPStatusError as err:
-            raise HomeAssistantError(f"Communication error: {err}") from err
+        except (httpx.HTTPError, ValueError) as err:
+            # ValueError: atmeexpy setters parse the response, which may be a non-JSON error page
+            raise HomeAssistantError(f"Communication error: {type(err).__name__} {err}") from err

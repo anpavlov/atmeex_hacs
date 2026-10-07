@@ -70,6 +70,11 @@
         }
     },
     "entity": {
+        "binary_sensor": {
+            "no_water": {
+                "name": "Нет воды"
+            }
+        },
         "climate": {
             "atmeex_cloud": {
                 "state_attributes": {
@@ -99,6 +104,11 @@
                 "name": "Вентилятор"
             }
         },
+        "number": {
+            "fan_speed": {
+                "name": "Скорость вентилятора"
+            }
+        },
         "select": {
             "damper_position": {
                 "name": "Заслонка",
@@ -107,11 +117,40 @@
                     "mixed": "Смешанный",
                     "closed": "Закрыта"
                 }
+            },
+            "humidifier": {
+                "name": "Увлажнитель",
+                "state": {
+                    "off": "Выключен",
+                    "stage_1": "Ступень 1",
+                    "stage_2": "Ступень 2",
+                    "stage_3": "Ступень 3"
+                }
+            }
+        },
+        "sensor": {
+            "temp_room": {
+                "name": "Температура в комнате"
+            },
+            "temp_in": {
+                "name": "Температура входящего воздуха"
+            },
+            "hum_room": {
+                "name": "Влажность в комнате"
+            },
+            "co2_ppm": {
+                "name": "CO₂"
             }
         },
         "switch": {
             "power": {
                 "name": "Питание"
+            },
+            "auto_mode": {
+                "name": "Авторежим"
+            },
+            "night_mode": {
+                "name": "Ночной режим"
             }
         }
     }
