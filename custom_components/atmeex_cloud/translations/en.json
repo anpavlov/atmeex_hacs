@@ -109,6 +109,20 @@
                 }
             }
         },
+        "sensor": {
+            "temp_room": {
+                "name": "Room temperature"
+            },
+            "temp_in": {
+                "name": "Intake air temperature"
+            },
+            "hum_room": {
+                "name": "Room humidity"
+            },
+            "co2_ppm": {
+                "name": "CO₂"
+            }
+        },
         "switch": {
             "power": {
                 "name": "Power"

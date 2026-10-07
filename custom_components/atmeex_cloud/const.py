@@ -6,6 +6,7 @@ PLATFORMS = [
     "climate",
     "fan",
     "select",
+    "sensor",
     "switch",
 ]
 

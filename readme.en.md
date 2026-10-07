@@ -11,6 +11,7 @@ A Home Assistant integration to control Airnanny A7 breathers through the Atmeex
 - 3 damper positions: supply, mixed mode, recirculation
 - Heating temperature control (10-30°C, 0.5°C step)
 - Passive ventilation (damper open, fan off)
+- Current readings: room temperature and humidity, CO₂, intake air temperature
 - Authorization via email + password, or via phone number with SMS one-time code
 
 ## Supported Devices
@@ -31,12 +32,13 @@ A Home Assistant integration to control Airnanny A7 breathers through the Atmeex
 
 ## Platforms
 
-The integration creates four types of entities for each device:
+The integration creates five types of entities for each device:
 
 - **Climate** — full breather control: power, temperature, fan speed, damper mode
 - **Switch** — power switch with automatic damper control
 - **Fan** — fan speed and power control WITHOUT damper control
 - **Select** — damper position selection (open/mixed/closed)
+- **Sensor** — current breather sensor readings
 
 ### Climate
 
@@ -89,6 +91,15 @@ Entity for independent damper position control.
 - **Supply** — damper open
 - **Mixed** — mixed mode
 - **Recirculation** — damper closed
+
+### Sensor
+
+Breather sensor readings, updated every minute:
+
+- **Room temperature**, °C (also shown as current temperature in Climate)
+- **Room humidity**, % (also shown as current humidity in Climate)
+- **CO₂**, ppm
+- **Intake air temperature**, °C
 
 ## Operation Features
 

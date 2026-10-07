@@ -3,7 +3,7 @@ import logging
 from homeassistant.components.climate import ClimateEntity, HVACMode, ClimateEntityFeature
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PRECISION_HALVES, UnitOfTemperature, ATTR_TEMPERATURE
+from homeassistant.const import PRECISION_TENTHS, UnitOfTemperature, ATTR_TEMPERATURE
 
 from atmeexpy.device import Device
 
@@ -42,7 +42,7 @@ class AtmeexClimateEntity(AtmeexBaseEntity, ClimateEntity):
     _attr_max_temp = 30
     _attr_fan_modes = SPEEDS
     _attr_preset_modes = PRESET_MODES
-    _attr_precision = PRECISION_HALVES
+    _attr_precision = PRECISION_TENTHS
     _attr_target_temperature_step = 0.5
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_supported_features = (
@@ -156,6 +156,9 @@ class AtmeexClimateEntity(AtmeexBaseEntity, ClimateEntity):
             if self.target_temperature is not None:
                 self._last_temp = self.target_temperature
             self._attr_target_temperature = None
+
+        self._attr_current_temperature = self.coordinator.get_reading(self.device_id, "temp_room", divider=10)
+        self._attr_current_humidity = self.coordinator.get_reading(self.device_id, "hum_room")
 
         # Determine HVAC mode based on power, damper position, and heating
         # damp_pos: 0=open, 1=mixed, 2=closed
